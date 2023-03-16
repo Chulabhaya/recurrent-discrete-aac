@@ -5,6 +5,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 import gymnasium_pomdps
+import simple_pomdps
 
 
 def make_env(env_id, seed, capture_video, run_name, max_episode_len=None):
@@ -110,7 +111,7 @@ def generalized_advantage_estimate(
     # next advantage after the last timestep is zero (because
     # it doesn't exist)
     advantages = torch.zeros(
-        rewards.shape[0] + 1, rewards.shape[1], device=rewards.device
+        rewards.shape[0] + 1, device=rewards.device
     )
 
     # Calculate backwards for computational efficiency

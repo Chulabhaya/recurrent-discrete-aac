@@ -141,13 +141,10 @@ class Memory:
             torch.as_tensor(np.array(self.obs)).to(self.device),
             torch.as_tensor(np.array(self.actions)).to(self.device),
             torch.as_tensor(np.array(self.next_obs)).to(self.device),
-            torch.as_tensor(np.array(self.rewards)).unsqueeze(1).to(self.device),
-            torch.as_tensor(np.array(self.terminateds))
-            .unsqueeze(1)
-            .to(self.device)
-            .long(),
-            torch.stack(self.entropies, dim=0).unsqueeze(1),
-            torch.stack(self.log_action_probs, dim=0).unsqueeze(1),
+            torch.as_tensor(np.array(self.rewards)).to(self.device),
+            torch.as_tensor(np.array(self.terminateds)).to(self.device).long(),
+            torch.stack(self.entropies, dim=0),
+            torch.stack(self.log_action_probs, dim=0),
         )
 
         # Reset memory for new episode

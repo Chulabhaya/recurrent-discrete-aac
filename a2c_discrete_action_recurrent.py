@@ -12,7 +12,7 @@ import torch.optim as optim
 
 import wandb
 from common.memory import Memory
-from common.models import DiscreteActor, DiscreteCritic
+from common.models import RecurrentDiscreteActor, RecurrentDiscreteCritic
 from common.utils import generalized_advantage_estimate, make_env, save, set_seed
 
 
@@ -127,14 +127,19 @@ if __name__ == "__main__":
             )
 
     # Env setup
-    env = make_env(args.env_id, args.seed, args.capture_video, run_name)
+    env = make_env(
+        args.env_id,
+        args.seed,
+        args.capture_video,
+        run_name,
+    )
     assert isinstance(
         env.action_space, gym.spaces.Discrete
     ), "only discrete action space is supported"
 
     # Initialize models and optimizers
-    actor = DiscreteActor(env).to(device)
-    vf1 = DiscreteCritic(env).to(device)
+    actor = RecurrentDiscreteActor(env).to(device)
+    vf1 = RecurrentDiscreteCritic(env).to(device)
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
     v_optimizer = optim.Adam(list(vf1.parameters()), lr=args.v_lr)
 
@@ -165,6 +170,7 @@ if __name__ == "__main__":
     if args.resume:
         start_global_step = checkpoint["global_step"] + 1
 
+    in_hidden = None
     obs, info = env.reset(seed=args.seed)
     # Set RNG state for env
     if args.resume:
@@ -184,10 +190,11 @@ if __name__ == "__main__":
         terminated, truncated = False, False
         while not (truncated or terminated):
             # Get action
-            action, log_action_prob, entropy = actor.get_action(
-                torch.tensor(obs).to(device)
+            action, log_action_prob, entropy, hidden_out = actor.get_action(
+                torch.tensor(obs).to(device).view(1, 1, -1), in_hidden
             )
-            action = action.detach().cpu().numpy()
+            action = action.view(-1).detach().cpu().numpy()[0]
+            in_hidden = hidden_out
 
             # Take step in environment
             next_obs, reward, terminated, truncated, info = env.step(action)
@@ -217,6 +224,7 @@ if __name__ == "__main__":
                 data_log["misc/episodic_return"] = info["episode"]["r"][0]
                 data_log["misc/episodic_length"] = info["episode"]["l"][0]
 
+                in_hidden = None
                 obs, info = env.reset()
 
         # ---------- update critic ---------- #
@@ -230,8 +238,8 @@ if __name__ == "__main__":
             episode_entropies,
             episode_log_action_probs,
         ) = memory.pop_all()
-        v_preds = vf1(episode_obs).squeeze()
-        v_next_preds = vf1(episode_next_obs).squeeze()
+        v_preds = vf1(episode_obs.view(episode_obs.shape[0], -1, episode_obs.shape[1])).squeeze()
+        v_next_preds = vf1(episode_obs.view(episode_obs.shape[0], -1, episode_obs.shape[1])).squeeze()
 
         # Calculate advantages using Generalized Advantage Estimation (GAE)
         advantages = generalized_advantage_estimate(
@@ -254,8 +262,8 @@ if __name__ == "__main__":
 
         # ---------- update actor ---------- #
         actor_loss = (
-            -episode_log_action_probs * advantages
-        ).mean() - args.entropy_coeff * episode_entropies.mean()
+            -episode_log_action_probs.squeeze() * advantages
+        ).mean() - args.entropy_coeff * episode_entropies.squeeze().mean()
         actor_optimizer.zero_grad()
         actor_loss.backward()
         actor_optimizer.step()

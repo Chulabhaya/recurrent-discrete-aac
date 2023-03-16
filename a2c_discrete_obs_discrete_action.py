@@ -12,7 +12,7 @@ import torch.optim as optim
 
 import wandb
 from common.memory import Memory
-from common.models import DiscreteActor, DiscreteCritic
+from common.models import DiscreteActorDiscreteObs, DiscreteCriticDiscreteObs
 from common.utils import generalized_advantage_estimate, make_env, save, set_seed
 
 
@@ -35,10 +35,12 @@ def parse_args():
         help="whether to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="CartPole-P-v0",
+    parser.add_argument("--env-id", type=str, default="POMDP-heavenhell_1-episodic-v0",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=200500,
         help="total timesteps of the experiments")
+    parser.add_argument("--maximum-episode-length", type=int, default=50,
+        help="maximum length for episodes for gym POMDP environment")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
     parser.add_argument("--lmbda", type=float, default=0.99,
@@ -127,14 +129,20 @@ if __name__ == "__main__":
             )
 
     # Env setup
-    env = make_env(args.env_id, args.seed, args.capture_video, run_name)
+    env = make_env(
+        args.env_id,
+        args.seed,
+        args.capture_video,
+        run_name,
+        max_episode_len=args.maximum_episode_length,
+    )
     assert isinstance(
         env.action_space, gym.spaces.Discrete
     ), "only discrete action space is supported"
 
     # Initialize models and optimizers
-    actor = DiscreteActor(env).to(device)
-    vf1 = DiscreteCritic(env).to(device)
+    actor = DiscreteActorDiscreteObs(env).to(device)
+    vf1 = DiscreteCriticDiscreteObs(env).to(device)
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
     v_optimizer = optim.Adam(list(vf1.parameters()), lr=args.v_lr)
 
