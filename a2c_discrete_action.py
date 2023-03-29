@@ -72,7 +72,7 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    run_name = f"{args.env_id}__{args.exp_name}"
     wandb_id = wandb.util.generate_id()
     run_id = f"{run_name}__{wandb_id}"
 
