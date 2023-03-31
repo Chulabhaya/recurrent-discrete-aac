@@ -12,7 +12,10 @@ import torch.optim as optim
 
 import wandb
 from common.memory import Memory
-from common.models import RecurrentDiscreteActorDiscreteObs, RecurrentDiscreteCriticDiscreteObs
+from common.models import (
+    RecurrentDiscreteActorDiscreteObs,
+    RecurrentDiscreteCriticDiscreteObs,
+)
 from common.utils import generalized_advantage_estimate, make_env, save, set_seed
 
 
@@ -52,7 +55,6 @@ def parse_args():
     parser.add_argument("--entropy-coeff", type=float, default=0.01,
         help="coefficient for entropy loss")
 
-
     # Checkpointing specific arguments
     parser.add_argument("--save", type=lambda x:bool(strtobool(x)), default=True, nargs="?", const=True,
         help="checkpoint saving during training")
@@ -74,7 +76,7 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    run_name = f"{args.env_id}__{args.exp_name}"
+    run_name = f"{args.exp_name}"
     wandb_id = wandb.util.generate_id()
     run_id = f"{run_name}__{wandb_id}"
 
@@ -85,12 +87,7 @@ if __name__ == "__main__":
             id=args.run_id,
             dir=args.wandb_dir,
             project=args.wandb_project,
-            config=vars(args),
-            name=run_name,
             resume="must",
-            save_code=True,
-            settings=wandb.Settings(code_dir="."),
-            group=args.wandb_group,
             mode="offline",
         )
     else:
@@ -313,7 +310,6 @@ if __name__ == "__main__":
                     ] = torch.cuda.get_rng_state_all()
 
                 save(
-                    wandb.run.name,
                     run_id,
                     args.save_checkpoint_dir,
                     global_step,
