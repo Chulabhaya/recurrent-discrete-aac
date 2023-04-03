@@ -47,7 +47,7 @@ def parse_args():
         help="the learning rate of the policy network optimizer")
     parser.add_argument("--v-lr", type=float, default=1e-3,
         help="the learning rate of the state value network optimizer")
-    parser.add_argument("--entropy-coeff", type=float, default=0.01,
+    parser.add_argument("--beta", type=float, default=0.01,
         help="coefficient for entropy loss")
 
     # Checkpointing specific arguments
@@ -262,7 +262,7 @@ if __name__ == "__main__":
         # ---------- update actor ---------- #
         actor_loss = (
             -episode_log_action_probs.squeeze() * advantages
-        ).mean() - args.entropy_coeff * episode_entropies.squeeze().mean()
+        ).mean() - args.beta * episode_entropies.squeeze().mean()
         actor_optimizer.zero_grad()
         actor_loss.backward()
         actor_optimizer.step()
