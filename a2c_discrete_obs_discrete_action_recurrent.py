@@ -240,24 +240,24 @@ if __name__ == "__main__":
             episode_entropies,
             episode_log_action_probs,
         ) = memory.pop_all()
-        v_preds = vf1(episode_obs.view(-1, 1)).squeeze()
-        v_next_preds = vf1(episode_next_obs.view(-1, 1)).squeeze()
+        v_pred_values = vf1(episode_obs.view(-1, 1)).squeeze()
+        v_next_pred_values = vf1(episode_next_obs.view(-1, 1)).squeeze()
 
         # Calculate advantages using Generalized Advantage Estimation (GAE)
         advantages = generalized_advantage_estimate(
             args.gamma,
             args.lmbda,
-            v_preds.detach(),
-            v_next_preds.detach(),
+            v_pred_values.detach(),
+            v_next_pred_values.detach(),
             episode_rewards,
             episode_terminateds,
         )
 
         # Calculate TD value target
-        v_target = (advantages + v_preds).detach()
+        v_target_values = (advantages + v_pred_values).detach()
 
         # Calculate state-value function loss
-        vf_loss = F.mse_loss(v_target, v_preds)
+        vf_loss = F.mse_loss(v_target_values, v_pred_values)
         v_optimizer.zero_grad()
         vf_loss.backward()
         v_optimizer.step()
@@ -271,7 +271,7 @@ if __name__ == "__main__":
         actor_optimizer.step()
 
         if global_step % 100 == 0:
-            data_log["losses/vf1_values"] = v_preds.mean().item()
+            data_log["losses/vf1_values"] = v_pred_values.mean().item()
             data_log["losses/vf_loss"] = vf_loss.item()
             data_log["losses/actor_loss"] = actor_loss.item()
             data_log["misc/steps_per_second"] = int(

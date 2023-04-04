@@ -84,7 +84,7 @@ def set_seed(seed, device):
 
 
 def generalized_advantage_estimate(
-    gamma, lmbda, v_preds, v_next_preds, rewards, terminateds
+    gamma, lmbda, v_pred_values, v_next_pred_values, rewards, terminateds
 ):
     """Generates seeded environment.
 
@@ -94,9 +94,9 @@ def generalized_advantage_estimate(
         Discount factor gamma.
     lmbda : float
         Bias/variance trade-off factor lambda.
-    v_preds : tensor
+    v_pred_values : tensor
         Value function predictions for current observations.
-    v_next_preds : tensor
+    v_next_pred_values : tensor
         Value function predictions for next observations.
     rewards : tensor
         Episode rewards.
@@ -118,7 +118,7 @@ def generalized_advantage_estimate(
     # Calculate backwards for computational efficiency
     for t in reversed(range(rewards.shape[0])):
         delta_t = (
-            rewards[t] + (1 - terminateds[t]) * gamma * v_next_preds[t] - v_preds[t]
+            rewards[t] + (1 - terminateds[t]) * gamma * v_next_pred_values[t] - v_pred_values[t]
         )
         advantages[t] = (
             delta_t + (1 - terminateds[t]) * gamma * lmbda * advantages[t + 1]
