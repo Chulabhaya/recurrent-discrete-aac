@@ -46,14 +46,17 @@ def save(
     checkpoint_dir,
     global_step,
     models,
-    memory,
     optimizers,
+    replay_buffer,
     rng_states,
 ):
     save_dir = checkpoint_dir + run_id + "/"
 
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
+        # Prevent permission issues when writing to this directory
+        # after resuming a training job
+        os.chmod(save_dir, 0o777)
 
     save_path = save_dir + "global_step_" + str(global_step) + ".pth"
     torch.save(
@@ -61,7 +64,7 @@ def save(
             "global_step": global_step,
             "model_state_dict": models,
             "optimizer_state_dict": optimizers,
-            "memory": memory,
+            "replay_buffer": replay_buffer,
             "rng_states": rng_states,
         },
         save_path,
