@@ -97,7 +97,7 @@ class Memory:
         truncated : bool
             Truncated status.
         entropy : float
-            Entropy of policy.
+            Policy entropies.
         log_action_prob : float
             Log of probability of action taken by policy.
         """

@@ -5,7 +5,7 @@ from torch.distributions import Categorical
 
 
 class RecurrentDiscreteCritic(nn.Module):
-    """Recurrent discrete state-value function model for discrete A2C for POMDPs with discrete actions
+    """Recurrent discrete state value function model for discrete A2C for POMDPs with discrete actions
     and continuous observations."""
 
     def __init__(self, env):
@@ -22,22 +22,22 @@ class RecurrentDiscreteCritic(nn.Module):
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 1)
 
-    def forward(self, state):
+    def forward(self, states):
         """
-        Calculates state-action value.
+        Calculates state-action values.
 
         Parameters
         ----------
-        state : tensor
-            State or observation.
+        states : tensor
+            States or observations.
 
         Returns
         -------
-        state_value : tensor
-            State value for input state.
+        values : tensor
+            State values for input states.
         """
         # Embedding layer
-        x = F.relu(self.fc1(state))
+        x = F.relu(self.fc1(states))
 
         # Padded LSTM layer
         self.lstm1.flatten_parameters()
@@ -45,8 +45,8 @@ class RecurrentDiscreteCritic(nn.Module):
 
         # Remaining layers
         x = F.relu(self.fc2(x))
-        state_value = self.fc3(x)
-        return state_value
+        values = self.fc3(x)
+        return values
 
 
 class RecurrentDiscreteActor(nn.Module):
@@ -68,14 +68,14 @@ class RecurrentDiscreteActor(nn.Module):
         self.fc_out = nn.Linear(256, env.action_space.n)
         self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, state, in_hidden=None):
+    def forward(self, states, in_hidden=None):
         """
-        Calculates probabilities for taking each action given a state.
+        Calculates action probabilities given states.
 
         Parameters
         ----------
-        state : tensor
-            State or observation.
+        states : tensor
+            States or observations.
         in_hidden : float
             LSTM hidden layer carrying over memory from previous timestep.
 
@@ -87,7 +87,7 @@ class RecurrentDiscreteActor(nn.Module):
             LSTM hidden layer for preserving memory for next timestep.
         """
         # Embedding layer
-        x = F.relu(self.fc1(state))
+        x = F.relu(self.fc1(states))
 
         # LSTM layer
         self.lstm1.flatten_parameters()
@@ -100,36 +100,36 @@ class RecurrentDiscreteActor(nn.Module):
 
         return action_probs, out_hidden
 
-    def get_action(self, state, in_hidden=None):
+    def get_actions(self, states, in_hidden=None):
         """
         Calculates actions by sampling from action distribution.
 
         Parameters
         ----------
-        state : tensor
-            State or observation.
+        states : tensor
+            States or observations.
         in_hidden : float
             LSTM hidden layer carrying over memory from previous timestep.
 
         Returns
         -------
-        action : tensor
-            Sampled action from action distribution.
-        log_action_prob : tensor
-            Log of probability of action sampled.
-        entropy : tensor
-            Entropy of policy.
+        actions : tensor
+            Sampled actions from action distribution.
+        log_action_probs : tensor
+            Logs of action probabilities.
+        entropies : tensor
+            Policy entropies.
         out_hidden : tensor
             LSTM hidden layer for preserving memory for next timestep.
         """
-        action_probs, out_hidden = self.forward(state, in_hidden)
+        action_probs, out_hidden = self.forward(states, in_hidden)
 
         dist = Categorical(action_probs)
-        action = dist.sample().to(state.device)
-        entropy = dist.entropy()
-        log_action_prob = dist.log_prob(action)
+        actions = dist.sample().to(states.device)
+        entropies = dist.entropy()
+        log_action_probs = dist.log_prob(actions)
 
-        return action, log_action_prob, entropy, out_hidden
+        return actions, log_action_probs, entropies, out_hidden
 
 
 class DiscreteCritic(nn.Module):
@@ -149,24 +149,24 @@ class DiscreteCritic(nn.Module):
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 1)
 
-    def forward(self, state):
+    def forward(self, states):
         """
         Calculates state value for a given input state.
 
         Parameters
         ----------
-        state : tensor
-            State or observation.
+        states : tensor
+            States or observations.
 
         Returns
         -------
-        state_value : tensor
-            State value for input state.
+        values : tensor
+            State values for input states.
         """
-        x = F.relu(self.fc1(state))
+        x = F.relu(self.fc1(states))
         x = F.relu(self.fc2(x))
-        state_value = self.fc3(x)
-        return state_value
+        values = self.fc3(x)
+        return values
 
 
 class DiscreteActor(nn.Module):
@@ -187,57 +187,57 @@ class DiscreteActor(nn.Module):
         self.fc_out = nn.Linear(256, env.action_space.n)
         self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, state):
+    def forward(self, states):
         """
-        Calculates probabilities for taking each action given a state.
+        Calculates action probabilities given states.
 
         Parameters
         ----------
-        state : tensor
-            State or observation.
+        states : tensor
+            States or observations.
 
         Returns
         -------
         action_probs : tensor
             Probabilities for all actions possible with input state.
         """
-        x = F.relu(self.fc1(state))
+        x = F.relu(self.fc1(states))
         x = F.relu(self.fc2(x))
         action_logits = self.fc_out(x)
         action_probs = self.softmax(action_logits)
 
         return action_probs
 
-    def get_action(self, state):
+    def get_actions(self, states):
         """
         Calculates actions by sampling from action distribution.
 
         Parameters
         ----------
-        state : tensor
-            State or observation.
+        states : tensor
+            States or observations.
 
         Returns
         -------
-        action : tensor
-            Sampled action from action distribution.
-        log_action_prob : tensor
-            Log of probability of action sampled.
-        entropy : tensor
-            Entropy of policy.
+        actions : tensor
+            Sampled actions from action distribution.
+        log_action_probs : tensor
+            Logs of action probabilities.
+        entropies : tensor
+            Policy entropies.
         """
-        action_probs = self.forward(state)
+        action_probs = self.forward(states)
 
         dist = Categorical(action_probs)
-        action = dist.sample().to(state.device)
-        entropy = dist.entropy()
-        log_action_prob = dist.log_prob(action)
+        actions = dist.sample().to(states.device)
+        entropies = dist.entropy()
+        log_action_probs = dist.log_prob(actions)
 
-        return action, log_action_prob, entropy
+        return actions, log_action_probs, entropies
 
 
 class RecurrentDiscreteCriticDiscreteObs(nn.Module):
-    """Recurrent discrete state-value network for discrete A2C for POMDPs with discrete actions
+    """Recurrent discrete state value network for discrete A2C for POMDPs with discrete actions
     and discrete observations."""
 
     def __init__(self, env):
@@ -254,22 +254,22 @@ class RecurrentDiscreteCriticDiscreteObs(nn.Module):
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 1)
 
-    def forward(self, state):
+    def forward(self, states):
         """
-        Calculates state-action value.
+        Calculates state-action values.
 
         Parameters
         ----------
-        state : tensor
-            State or observation.
+        states : tensor
+            States or observations.
 
         Returns
         -------
-        state_value : tensor
-            State value for input state.
+        values : tensor
+            State values for input states.
         """
         # Embedding layer
-        x = self.embedding(state)
+        x = self.embedding(states)
 
         # Padded LSTM layer
         self.lstm1.flatten_parameters()
@@ -277,8 +277,8 @@ class RecurrentDiscreteCriticDiscreteObs(nn.Module):
 
         # Remaining layers
         x = F.relu(self.fc2(x))
-        state_value = self.fc3(x)
-        return state_value
+        values = self.fc3(x)
+        return values
 
 
 class RecurrentDiscreteActorDiscreteObs(nn.Module):
@@ -300,14 +300,14 @@ class RecurrentDiscreteActorDiscreteObs(nn.Module):
         self.fc_out = nn.Linear(256, env.action_space.n)
         self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, state, in_hidden=None):
+    def forward(self, states, in_hidden=None):
         """
-        Calculates probabilities for taking each action given a state.
+        Calculates action probabilities given states.
 
         Parameters
         ----------
-        state : tensor
-            State or observation.
+        states : tensor
+            States or observations.
         in_hidden : float
             LSTM hidden layer carrying over memory from previous timestep.
 
@@ -319,7 +319,7 @@ class RecurrentDiscreteActorDiscreteObs(nn.Module):
             LSTM hidden layer for preserving memory for next timestep.
         """
         # Embedding layer
-        x = self.embedding(state)
+        x = self.embedding(states)
 
         # LSTM layer
         self.lstm1.flatten_parameters()
@@ -332,40 +332,40 @@ class RecurrentDiscreteActorDiscreteObs(nn.Module):
 
         return action_probs, out_hidden
 
-    def get_action(self, state, in_hidden=None):
+    def get_actions(self, states, in_hidden=None):
         """
         Calculates actions by sampling from action distribution.
 
         Parameters
         ----------
-        state : tensor
-            State or observation.
+        states : tensor
+            States or observations.
         in_hidden : float
             LSTM hidden layer carrying over memory from previous timestep.
 
         Returns
         -------
-        action : tensor
-            Sampled action from action distribution.
-        log_action_prob : tensor
-            Log of probability of action sampled.
-        entropy : tensor
-            Entropy of policy.
+        actions : tensor
+            Sampled actions from action distribution.
+        log_action_probs : tensor
+            Logs of action probabilities.
+        entropies : tensor
+            Policy entropies.
         out_hidden : tensor
             LSTM hidden layer for preserving memory for next timestep.
         """
-        action_probs, out_hidden = self.forward(state, in_hidden)
+        action_probs, out_hidden = self.forward(states, in_hidden)
 
         dist = Categorical(action_probs)
-        action = dist.sample().to(x.device)
-        entropy = dist.entropy()
-        log_action_prob = dist.log_prob(action)
+        actions = dist.sample().to(states.device)
+        entropies = dist.entropy()
+        log_action_probs = dist.log_prob(actions)
 
-        return action, log_action_prob, entropy, out_hidden
+        return actions, log_action_probs, entropies, out_hidden
 
 
 class DiscreteCriticDiscreteObs(nn.Module):
-    """Discrete state-value function network for discrete A2C with discrete actions
+    """Discrete state value function network for discrete A2C with discrete actions
     and discrete observations."""
 
     def __init__(self, env):
@@ -381,24 +381,24 @@ class DiscreteCriticDiscreteObs(nn.Module):
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 1)
 
-    def forward(self, state):
+    def forward(self, states):
         """
         Calculates state value for a given input state.
 
         Parameters
         ----------
-        state : tensor
-            State or observation.
+        states : tensor
+            States or observations.
 
         Returns
         -------
-        state_value : tensor
-            State value for input state.
+        values : tensor
+            State values for input states.
         """
-        x = self.embedding(state)
+        x = self.embedding(states)
         x = F.relu(self.fc2(x))
-        state_value = self.fc3(x)
-        return state_value
+        values = self.fc3(x)
+        return values
 
 
 class DiscreteActorDiscreteObs(nn.Module):
@@ -419,50 +419,50 @@ class DiscreteActorDiscreteObs(nn.Module):
         self.fc_out = nn.Linear(256, env.action_space.n)
         self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, state):
+    def forward(self, states):
         """
-        Calculates probabilities for taking each action given a state.
+        Calculates action probabilities given states.
 
         Parameters
         ----------
-        state : tensor
-            State or observation.
+        states : tensor
+            States or observations.
 
         Returns
         -------
         action_probs : tensor
             Probabilities for all actions possible with input state.
         """
-        x = self.embedding(state)
+        x = self.embedding(states)
         x = F.relu(self.fc2(x))
         action_logits = self.fc_out(x)
         action_probs = self.softmax(action_logits)
 
         return action_probs
 
-    def get_action(self, state):
+    def get_actions(self, states):
         """
         Calculates actions by sampling from action distribution.
 
         Parameters
         ----------
-        state : tensor
-            State or observation.
+        states : tensor
+            States or observations.
 
         Returns
         -------
-        action : tensor
-            Sampled action from action distribution.
-        log_action_prob : tensor
-            Log of probability of action sampled.
-        entropy : tensor
-            Entropy of policy.
+        actions : tensor
+            Sampled actions from action distribution.
+        log_action_probs : tensor
+            Logs of action probabilities.
+        entropies : tensor
+            Policy entropies.
         """
-        action_probs = self.forward(state)
+        action_probs = self.forward(states)
 
         dist = Categorical(action_probs)
-        action = dist.sample().to(state.device)
-        entropy = dist.entropy()
-        log_action_prob = dist.log_prob(action)
+        actions = dist.sample().to(states.device)
+        entropies = dist.entropy()
+        log_action_probs = dist.log_prob(actions)
 
-        return action, log_action_prob, entropy
+        return actions, log_action_probs, entropies

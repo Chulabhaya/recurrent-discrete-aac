@@ -188,7 +188,7 @@ if __name__ == "__main__":
         terminated, truncated = False, False
         while not (truncated or terminated):
             # Get action
-            action, log_action_prob, entropy = actor.get_action(
+            action, log_action_prob, entropy = actor.get_actions(
                 torch.tensor(obs).to(device)
             )
             action = action.detach().cpu().numpy()
@@ -224,7 +224,7 @@ if __name__ == "__main__":
                 obs, info = env.reset()
 
         # ---------- update critic ---------- #
-        # Calculate state-value predictions for current observations and next observations
+        # Calculate state value predictions for current observations and next observations
         (
             episode_obs,
             episode_actions,
@@ -250,7 +250,7 @@ if __name__ == "__main__":
         # Calculate TD value target
         v_target_values = (advantages + v_pred_values).detach()
 
-        # Calculate state-value function loss
+        # Calculate state value function loss
         vf_loss = F.mse_loss(v_target_values, v_pred_values)
         v_optimizer.zero_grad()
         vf_loss.backward()
